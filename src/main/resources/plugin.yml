@@ -1,6 +1,6 @@
 name: AutoRe
 main: ml.bmlzootown.AutoRe
-version: 0.0.2
+version: 0.0.3
 author: bmlzootown
 description: Automatic restarts.
 
@@ -17,4 +17,6 @@ permissions:
     default: op
     children:
       autore.ar:
-        description: Gives permission to ar command.
+        description: Gives access to basic AutoRe command(s)
+      autore.admin:
+        description: Gives access to admin commad(s)

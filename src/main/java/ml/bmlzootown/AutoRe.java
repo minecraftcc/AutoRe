@@ -142,28 +142,34 @@ public final class AutoRe extends JavaPlugin {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (cmd.getName().equalsIgnoreCase("ar") || cmd.getName().equalsIgnoreCase("autore")) {
-            if(!sender.hasPermission("autore.ar")){ sender.sendMessage("You don't have permission to do this."); return true; }
-            else{
+            if(!sender.hasPermission("autore.ar")){
+                sender.sendMessage("You don't have permission to do this.");
+                return true;
+            } else{
                 if (args.length==0) {
-                    sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "AutoRe commands:");
-                    sender.sendMessage("/ar <hours> <minutes> <seconds> (30 second min. for warning)");
-                    sender.sendMessage("/ar cancel");
-                    sender.sendMessage("/ar now");
-                    sender.sendMessage("/ar reload");
+                    sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "AutoRe command(s):");
+                    if (sender.hasPermission("autore.admin")) {
+                        sender.sendMessage("/ar <hours> <minutes> <seconds> (30 second min. for warning)");
+                        sender.sendMessage("/ar cancel");
+                        sender.sendMessage("/ar now");
+                        sender.sendMessage("/ar reload");
+                    }
                     sender.sendMessage("/ar status");
                 }
                 if(args.length==1){
-                    if(args[0].equalsIgnoreCase("now")){
-                        sender.sendMessage(scheduleRestart(0,0,1));
-                        return true;
-                    }
-                    if(args[0].equalsIgnoreCase("cancel")){
-                        sender.sendMessage(cancelRestart());
-                        return true;
-                    }
-                    if(args[0].equalsIgnoreCase("reload")){
-                        sender.sendMessage(reload());
-                        return true;
+                    if (sender.hasPermission("autore.admin")) {
+                        if (args[0].equalsIgnoreCase("now")) {
+                            sender.sendMessage(scheduleRestart(0, 0, 1));
+                            return true;
+                        }
+                        if (args[0].equalsIgnoreCase("cancel")) {
+                            sender.sendMessage(cancelRestart());
+                            return true;
+                        }
+                        if (args[0].equalsIgnoreCase("reload")) {
+                            sender.sendMessage(reload());
+                            return true;
+                        }
                     }
                     if(args[0].equalsIgnoreCase("status")){
                         String[] status={"ENABLED","DISABLED"};
@@ -173,12 +179,14 @@ public final class AutoRe extends JavaPlugin {
                     }
                 }
                 if(args.length==3){
-                    try {
-                        sender.sendMessage(scheduleRestart(Integer.parseInt(args[0]),Integer.parseInt(args[1]),Integer.parseInt(args[2])));
-                        return true;
-                    } catch (NumberFormatException e) {
-                        sender.sendMessage(retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "The time values entered could not be understood."));
-                        return false;
+                    if (sender.hasPermission("autore.admin")) {
+                        try {
+                            sender.sendMessage(scheduleRestart(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2])));
+                            return true;
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage(retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "The time values entered could not be understood."));
+                            return false;
+                        }
                     }
                 }
             }
