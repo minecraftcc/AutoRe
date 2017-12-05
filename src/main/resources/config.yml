@@ -1,0 +1,7 @@
+interval:
+    enabled: true
+    time:
+        h: 6
+        m: 0
+        s: 0
+restart-command: 'stop'

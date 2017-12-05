@@ -1,0 +1,13 @@
+language: java
+
+notifications:
+  email: false
+
+deploy:
+  provider: releases
+  api_key: "70f7abba10b3ea245f70ba41f52af11f1a0ee6bd"
+  file_glob: true
+  file: "target/AutoRe.jar"
+  skip_cleanup: true
+  on:
+    tags: true

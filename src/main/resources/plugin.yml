@@ -1,0 +1,20 @@
+name: AutoRe
+main: ml.bmlzootown.AutoRe
+version: 0.0.1
+author: bmlzootown
+description: Automatic restarts.
+
+commands:
+   ar:
+      description: Changes automatic restart interval (for only this restart), reloads settings, or retrieves information
+      permission: autore.ar
+      permission-message: You don't have permission for this command
+      aliases: [autore]
+
+permissions:
+  autore.*:
+    description: gives all permissions for AutoRe
+    default: op
+    children:
+      autore.ar:
+        description: Gives permission to ar command.
