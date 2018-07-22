@@ -3,6 +3,7 @@ main: ml.bmlzootown.AutoRe
 version: 0.0.3
 author: bmlzootown
 description: Automatic restarts.
+api-version: 1.13
 
 commands:
    ar:
