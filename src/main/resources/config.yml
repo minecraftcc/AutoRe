@@ -1,7 +1,12 @@
+enabled: true
+warning-times:
+  - 1800
+  - 600
+  - 300
+  - 60
+  - 30
 interval:
-    enabled: true
-    time:
-        h: 6
-        m: 0
-        s: 0
+  h: 4
+  m: 0
+  s: 0
 restart-command: 'stop'

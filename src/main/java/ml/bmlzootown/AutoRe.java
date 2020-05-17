@@ -1,142 +1,243 @@
 package ml.bmlzootown;
 
+import ml.bmlzootown.config.ConfigManager;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 
-public final class AutoRe extends JavaPlugin {
-    private static final int TPS = 20;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-    private BukkitTask task_warnthirty = null;
-    private BukkitTask task_warnone = null;
-    private BukkitTask task_warnfive = null;
-    private BukkitTask task_warnten = null;
-    private BukkitTask task_restart = null;
+public class AutoRe extends JavaPlugin {
+    private static AutoRe plugin;
+    private static Logger log = Bukkit.getLogger();
 
-    private long current_h=0;
-    private long current_m=0;
-    private long current_s=0;
-    private boolean enabled = false;
-    private static String command = "stop";
+    private long current_h = 0;
+    private long current_m = 0;
+    private long current_s = 0;
 
     private static long startTime;
     private static long stopTime;
+    private static long seconds;
 
-    private String retlog(String s){
-        getLogger().info(s);
-        return s;
+    private boolean enabled = true;
+
+    private static String command = "stop";
+
+    private static List<Integer> warnings = new ArrayList<>();
+    private static List<TimerTask> warningTasks = new ArrayList<>();
+    private static Timer warningTask;
+    private static Timer restartTask;
+
+    public void onEnable() {
+        plugin = this;
+        File file = new File(getDataFolder(), "config.yml");
+        if (!file.exists()) {
+            ConfigManager.setConfigDefaults();
+        }
+        reload();
     }
 
-    public static String getCmd() {
-        return command;
+    public void onDisable() {
+        warnings = null;
+        warningTask = null;
+        warningTasks = null;
+        restartTask = null;
     }
 
-    public static String remainingTime() {
-        double seconds = (stopTime - System.nanoTime()) / 1000000000.0;
-        double s = seconds % 60;
-        double totalminutes = seconds / 60;
-        double m = totalminutes % 60;
-        double totalhours = totalminutes /60;
-        double h = totalhours % 60;
-        return (int)Math.floor(h) + "h " + (int)Math.floor(m) + "m " + (int)Math.floor(s) + "s";
+    public static Plugin getP() {
+        return plugin;
     }
 
-    private long timeToTicks(long h,long m, long s){
-        s+=60*(m + 60*h);
-        return s*TPS;
-    }
-
-    private void loadConfig(){
-        saveDefaultConfig();
+    private void loadConfig() {
+        //saveDefaultConfig();
         reloadConfig();
-        enabled = this.getConfig().getBoolean("interval.enabled");
-        current_h = this.getConfig().getLong("interval.time.h");
-        current_m = this.getConfig().getLong("interval.time.m");
-        current_s = this.getConfig().getLong("interval.time.s");
-        command = this.getConfig().getString("restart-command");
+        command = ConfigManager.getCommand();
+        enabled = ConfigManager.isEnabled();
+        current_h = ConfigManager.getH();
+        current_m = ConfigManager.getM();
+        current_s = ConfigManager.getS();
+        warnings = ConfigManager.getWarningTimes();
     }
 
-    private String reload() {
+    private void reload() {
         cancelRestart();
         loadConfig();
         if (enabled) {
-            scheduleRestart(current_h,current_m,current_s);
+            scheduleRestart(current_h, current_m, current_s);
         }
-        return retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Reloaded config.");
+        log.log(Level.INFO, ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Reloaded config.");
     }
 
-    private String cancelRestart(){
-        enabled=false;
-        if(task_warnthirty == null) {
-            return retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "No restart scheduled.");
+    private String cancelRestart() {
+        enabled = false;
+
+        if (warningTasks == null || warningTasks.isEmpty()) {
+            //log.log(Level.INFO, ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "No restart scheduled.");
+            return (ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "No restart scheduled.");
         }
-        getLogger().info(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Cancelling restart.");
-        if(task_warnthirty != null) {
-            task_warnthirty.cancel();
+
+        log.log(Level.INFO, ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Cancelling restart.");
+        for (TimerTask time : warningTasks) {
+            time.cancel();
         }
-        if(task_warnone != null) {
-            task_warnone.cancel();
-        }
-        if(task_warnfive != null) {
-            task_warnfive.cancel();
-        }
-        if(task_warnten != null) {
-            task_warnten.cancel();
-        }
-        if(task_restart != null) {
-            task_restart.cancel();
-        }
+        warningTask.cancel();
+        restartTask.cancel();
         current_s = 0;
         current_m = 0;
         current_h = 0;
-        task_warnthirty = null;
-        task_restart = null;
-        return retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Restart cancelled.");
-
+        warningTasks = new ArrayList<>();
+        restartTask = new Timer();
+        warningTask = new Timer();
+        log.log(Level.INFO, ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Restart cancelled.");
+        return ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Restart cancelled.";
     }
 
-    private String scheduleRestart(long h, long m, long s){
+    private void scheduleRestart(long h, long m, long s) {
         cancelRestart();
         enabled = true;
         current_h = h;
         current_m = m;
         current_s = s;
+
         startTime = System.nanoTime();
-        long seconds = ((h*60)*60) + (m*60) + s;
+        seconds = ((h*60)*60) + (m*60) + s;
         stopTime = (seconds * 1000000000) + startTime;
 
-        if (seconds > 0) {
-            task_restart = new Restart(this).runTaskLater(this, timeToTicks(0,0, seconds));
-            if (seconds >= 30) {
-                task_warnthirty = new Warn(this).runTaskLater(this, timeToTicks(0, 0, (seconds - 30)));
-                if (seconds >= 60) {
-                    task_warnone = new WarnOne(this).runTaskLater(this, timeToTicks(0,0,(seconds-60)));
-                    if (seconds >= 300) {
-                        task_warnfive = new WarnFive(this).runTaskLater(this, timeToTicks(0,0,(seconds-300)));
-                        if (seconds >= 600 ) {
-                            task_warnten = new WarnTen(this).runTaskLater(this, timeToTicks(0,0,(seconds-600)));
-                        }
-                    }
-                }
+        for (int warn : warnings) {
+            if (seconds > warn) {
+                scheduleWarning(warn);
             }
         }
 
-        return retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Scheduled restart for " + ChatColor.AQUA + (int)current_h + "h " + (int)current_m + "m " + (int)current_s + "s " + ChatColor.WHITE +"from now.");
+        restartTask = new Timer();
+        TimerTask reTask = new TimerTask() {
+            @Override
+            public void run() {
+                plugin.getServer().broadcastMessage(ChatColor.RED + "[AutoRe] Restarting now!");
+                ConsoleCommandSender console = Bukkit.getServer().getConsoleSender();
+                try {
+                    Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                        Bukkit.dispatchCommand(console, command);
+                        return true;
+                    }).get();
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        restartTask.schedule(reTask, (seconds * 1000));
+        log.log(Level.INFO, ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Restart Scheduled: " + current_h + "h " + current_m + "m " + current_s + "s");
     }
 
-
-    @Override
-    public void onEnable() {
-        reload();
-        getLogger().info(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Enabled");
+    private void scheduleWarning(int time) {
+        Timer warning = new Timer(true);
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                ConsoleCommandSender console = Bukkit.getServer().getConsoleSender();
+                if (time > 59) {
+                    int minutes = time / 60;
+                    if (minutes > 59) {
+                        int hours = time / 3600;
+                        if (hours > 24) {
+                            try {
+                                Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                                    Bukkit.broadcastMessage(ChatColor.RED + "[AutoRe] Restarting server in " + ChatColor.YELLOW + hours + ChatColor.RED + " hours.");
+                                    for (Player p : Bukkit.getOnlinePlayers()) {
+                                        p.sendTitle(
+                                                ChatColor.RED + "Restarting some time next year, I think!",
+                                                "A server restart will occur in " + hours + " hours.",
+                                                10 ,
+                                                60,
+                                                10);
+                                    }
+                                    return true;
+                                }).get();
+                            } catch (InterruptedException | ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                        } else  {
+                            try {
+                                Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                                    Bukkit.broadcastMessage(ChatColor.RED + "[AutoRe] Restarting server in " + ChatColor.YELLOW + hours + ChatColor.RED + " hours.");
+                                    for (Player p : Bukkit.getOnlinePlayers()) {
+                                        p.sendTitle(
+                                                ChatColor.RED + "Restarting... soon?",
+                                                "A server restart will occur in " + hours + " hours.",
+                                                10 ,
+                                                60,
+                                                10);
+                                    }
+                                    return true;
+                                }).get();
+                            } catch (InterruptedException | ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } else {
+                        try {
+                            Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                                Bukkit.broadcastMessage(ChatColor.RED + "[AutoRe] Restarting server in " + ChatColor.YELLOW + minutes + ChatColor.RED + " minutes.");
+                                for (Player p : Bukkit.getOnlinePlayers()) {
+                                    p.sendTitle(
+                                            ChatColor.RED + "Restarting soon!",
+                                            "A server restart will occur in " + minutes + " minutes.",
+                                            10 ,
+                                            60,
+                                            10);
+                                }
+                                return true;
+                            }).get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else {
+                    try {
+                        Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                            Bukkit.broadcastMessage(ChatColor.RED + "[AutoRe] Restarting server in " + ChatColor.YELLOW + time + ChatColor.RED + " seconds.");
+                            for (Player p : Bukkit.getOnlinePlayers()) {
+                                p.sendTitle(
+                                        ChatColor.RED + "Restarting soon!",
+                                        "A server restart will occur in " + time + " seconds.",
+                                        10 ,
+                                        60,
+                                        10);
+                            }
+                            return true;
+                        }).get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+        warning.schedule(task, ((seconds - time) * 1000));
+        warningTask = warning;
+        warningTasks.add(task);
     }
 
-    @Override
-    public void onDisable() {
-        cancelRestart();
-        getLogger().info(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Disabled");
+    private static String remainingTime() {
+        double seconds = (stopTime - System.nanoTime()) / 1000000000.0;
+        double s = seconds % 60;
+        double totalminutes = seconds / 60;
+        double m = totalminutes % 60;
+        double totalhours = totalminutes / 60;
+        double h = totalhours % 60;
+        return (int) Math.floor(h) + "h " + (int) Math.floor(m) + "m " + (int) Math.floor(s) + "s";
     }
 
     @Override
@@ -146,7 +247,7 @@ public final class AutoRe extends JavaPlugin {
                 sender.sendMessage("You don't have permission to do this.");
                 return true;
             } else{
-                if (args.length==0) {
+                if (args.length == 0) {
                     sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "AutoRe command(s):");
                     if (sender.hasPermission("autore.admin")) {
                         sender.sendMessage("/ar <hours> <minutes> <seconds> (30 second min. for warning)");
@@ -156,10 +257,11 @@ public final class AutoRe extends JavaPlugin {
                     }
                     sender.sendMessage("/ar status");
                 }
-                if(args.length==1){
+                if(args.length == 1){
                     if (sender.hasPermission("autore.admin")) {
                         if (args[0].equalsIgnoreCase("now")) {
-                            sender.sendMessage(scheduleRestart(0, 0, 1));
+                            scheduleRestart(0, 0, 1);
+                            sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Impatience accepted -- restarting...");
                             return true;
                         }
                         if (args[0].equalsIgnoreCase("cancel")) {
@@ -167,24 +269,24 @@ public final class AutoRe extends JavaPlugin {
                             return true;
                         }
                         if (args[0].equalsIgnoreCase("reload")) {
-                            sender.sendMessage(reload());
+                            reload();
+                            sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Config reloaded...");
                             return true;
                         }
                     }
                     if(args[0].equalsIgnoreCase("status")){
-                        String[] status={"ENABLED","DISABLED"};
-                        int i=enabled?0:1;
                         sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Restarting in " + ChatColor.AQUA + remainingTime());
                         return true;
                     }
                 }
-                if(args.length==3){
+                if(args.length == 3){
                     if (sender.hasPermission("autore.admin")) {
                         try {
-                            sender.sendMessage(scheduleRestart(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2])));
+                            scheduleRestart(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]));
+                            sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "Server restarting in " + remainingTime());
                             return true;
                         } catch (NumberFormatException e) {
-                            sender.sendMessage(retlog(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "The time values entered could not be understood."));
+                            sender.sendMessage(ChatColor.RED + "[AutoRe] " + ChatColor.WHITE + "The time values entered could not be understood.");
                             return false;
                         }
                     }
@@ -194,10 +296,6 @@ public final class AutoRe extends JavaPlugin {
 
         return false;
     }
-
-
-
-
 
 
 }
