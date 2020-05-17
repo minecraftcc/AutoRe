@@ -1,15 +1,8 @@
 language: java
-
-notifications:
-  email: false
-
+before_deploy:
+  - export TARGET=$(ls target/AutoRe.jar)
 deploy:
   provider: releases
-  api_key:
-      secure: ANc1mboCa9+vqUE+2eVr++Fjv8iv4hewHXqHaoWc6n0SmHNSOa3mDl+v4l1hxiYDux208uvH7SPO7pmxPVlJWh825XYCWBBQLd4zwDSSyr7ogI6JxR7yWPYT5RNs5AmnoWwAZpXzbZZnDWA7RJ9iwtlM+YPytNkZQvQ8bjq6sFGaePax/BU1bkIxwuEAgq0w5v2XUTRAmP18pozFEstUokvGvOu+rZCGhNof1sQDGIZzylPO6LwXpFnIIWS3gT0J1HHh86Sdh7TzVUYSMerncy/MfiGLikS2z6GWUKTKpaBR9SgmZrReeZY2cYx+lI9wrfOFcaRu3phAlUlX2PG7YM8aEv68cBxpstT1V5E13M+ZtZ7wFXWsDVVApwIW0jamOrtKKYYbvKPHBBD5Sl6rAT9It42Hw4K+1rCsEZ4d6CvOJJ79GYGp/PQaMueheEzTwXK6sLWTeKib4+rji93rpb+1h6eNaKEdMURBiMaINAOHCuvfvtIMD+DqUCI/7MWDKIyS+DdSgd69d3C7APEeB1xntaIR3Fb45iEFiUfSiVpVKiOYqEVqUhnTVqJR4JSk89BVl7suDNqAJ/CtrGIV0c3fRZB3szipxnHQVzScaMOzDEwctddQC1xe++1SmXDCG9iCKmR8fSPnhN8tl+1BcB1I+3wq9jofaCVj3cjkn3o=
-  file_glob: true
-  file: "target/AutoRe.jar"
+  api_key: $GITHUB_TOKEN
   skip_cleanup: true
-  on:
-    tags: true
-    repo: bmlzootown/AutoRe
+  file: "${TARGET}"
