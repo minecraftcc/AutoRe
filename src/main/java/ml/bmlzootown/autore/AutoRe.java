@@ -1,6 +1,6 @@
-package ml.bmlzootown;
+package ml.bmlzootown.autore;
 
-import ml.bmlzootown.config.ConfigManager;
+import ml.bmlzootown.autore.config.ConfigManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;

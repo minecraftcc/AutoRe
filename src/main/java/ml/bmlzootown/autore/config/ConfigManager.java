@@ -1,6 +1,6 @@
-package ml.bmlzootown.config;
+package ml.bmlzootown.autore.config;
 
-import ml.bmlzootown.AutoRe;
+import ml.bmlzootown.autore.AutoRe;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 
