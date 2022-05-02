@@ -1,9 +1,9 @@
 name: AutoRe
 main: ml.bmlzootown.autore.AutoRe
-version: 0.0.6
+version: 0.0.7
 author: bmlzootown
 description: Automatic restarts.
-api-version: 1.15
+api-version: 1.18
 
 commands:
    autore:
